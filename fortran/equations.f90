@@ -2199,21 +2199,21 @@
     vb=ay(ix_vb)
     !  Compute expansion rate from: grho 8*pi*rho*a**2
 
-    grhob_t=State%grhob/a
-    ! JVR Modification Begins
-    xi_interaction = State%CP%DarkEnergy%xi_interaction
-    w_eff = State%CP%DarkEnergy%w_lam + xi_interaction/3._dl
-    grhoc_t=State%grhoc/a + xi_interaction * State%grhov * (1 - a**(-3._dl*w_eff)) / (3._dl * w_eff) / a
-    ! JVR Modification Ends
-    grhor_t=State%grhornomass/a2
-    grhog_t=State%grhog/a2
-
     if (EV%is_cosmological_constant) then
         grhov_t = State%grhov * a2
         w_dark_energy_t = -1_dl
     else
         call State%CP%DarkEnergy%BackgroundDensityAndPressure(State%grhov, a, grhov_t, w_dark_energy_t)
     end if
+
+    grhob_t=State%grhob/a
+    ! JVR Modification Begins
+    xi_interaction = State%CP%DarkEnergy%xi_interaction
+    w_eff = w_dark_energy_t + xi_interaction/3._dl
+    grhoc_t=State%grhoc/a + xi_interaction * State%grhov * (1 - a**(-3._dl*w_eff)) / (3._dl * w_eff) / a
+    ! JVR Modification Ends
+    grhor_t=State%grhornomass/a2
+    grhog_t=State%grhog/a2
 
     !total perturbations: matter terms first, then add massive nu, de and radiation
     !  8*pi*a*a*SUM[rho_i*clx_i]
@@ -2869,14 +2869,15 @@
     ! Compute expansion rate from: grho=8*pi*rho*a**2
     ! Also calculate gpres: 8*pi*p*a**2
     grhob_t=State%grhob/a
+    call CP%DarkEnergy%BackgroundDensityAndPressure(State%grhov, a, grhov_t, w_dark_energy_t)
     ! JVR Modification Begins
-    xi_interaction = State%CP%DarkEnergy%TDarkEnergyEqnOfState%xi_interaction
-    w_eff = State%CP%DarkEnergy%w_lam + xi_interaction/3._dl
-    grhoc_t=State%grhoc/a + xi_interaction * State%grhov * (1 - a**(-3._dl*w_eff)) / (3._dl * w_eff) / a
+    xi_interaction = State%CP%DarkEnergy%xi_interaction
+    w_eff = w_dark_energy_t + xi_interaction/3._dl
+    grhoc_t = State%grhoc/a + xi_interaction * State%grhov * (1 - a**(-3._dl*w_eff)) / (3._dl * w_eff) / a
     ! JVR Modification Ends
     grhor_t=State%grhornomass/a2
     grhog_t=State%grhog/a2
-    call CP%DarkEnergy%BackgroundDensityAndPressure(State%grhov, a, grhov_t, w_dark_energy_t)
+    
 
     grho=grhob_t+grhoc_t+grhor_t+grhog_t+grhov_t
     gpres=(grhog_t+grhor_t)/3._dl+grhov_t*w_dark_energy_t
