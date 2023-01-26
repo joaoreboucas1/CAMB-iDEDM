@@ -124,8 +124,10 @@
 
     Hv3_over_k =  3*adotoa* y(w_ix + 1) / k
     !density perturbation
-    ayprime(w_ix) = -3 * adotoa * (this%cs2_lam - w) *  (y(w_ix) + (1 + w) * Hv3_over_k) &
-        -  (1 + w) * k * y(w_ix + 1) - (1 + w) * k * z
+    ! JVR Modification Begins
+    ayprime(w_ix) = -3 * adotoa * (this%cs2_lam - w) *  (y(w_ix) + (1 + w) * Hv3_over_k + Hv3_over_k * this%xi_interaction / 3) &
+        -  (1 + w) * k * y(w_ix + 1) - (1 + w) * k * z * (1 + this%xi_interaction / (3*(1+w)))
+    ! JVR Modification Ends
     if (this%use_tabulated_w) then
         !account for derivatives of w
         loga = log(a)
@@ -137,8 +139,11 @@
     end if
     !velocity
     if (abs(w+1) > 1e-6) then
-        ayprime(w_ix + 1) = -adotoa * (1 - 3 * this%cs2_lam) * y(w_ix + 1) + &
+        ! JVR Modification Begins
+        ! JVR TODO: implement CDM velocity??
+        ayprime(w_ix + 1) = -adotoa * (1 - 3 * this%cs2_lam) * y(w_ix + 1) * (1 + this%xi_interaction * (1 - 0) / (1+w)) + &
             k * this%cs2_lam * y(w_ix) / (1 + w)
+        ! JVR Modification Ends
     else
         ayprime(w_ix + 1) = 0
     end if
