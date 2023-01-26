@@ -16,6 +16,7 @@
     procedure :: Init =>TDarkEnergyFluid_Init
     procedure :: PerturbedStressEnergy => TDarkEnergyFluid_PerturbedStressEnergy
     procedure :: PerturbationEvolve => TDarkEnergyFluid_PerturbationEvolve
+    procedure :: PerturbationInitial => TDarkEnergyFluid_PerturbationInitial ! JVR Modification
     end type TDarkEnergyFluid
 
     !Example implementation of fluid model using specific analytic form
@@ -41,6 +42,24 @@
     end type TAxionEffectiveFluid
 
     contains
+
+    ! JVR Modification Begins
+    subroutine TDarkEnergyFluid_PerturbationInitial(this, y, a, tau, k, photon_density_initial_condition)
+    class(TDarkEnergyFluid), intent(in) :: this
+    real(dl), intent(out) :: y(:)
+    real(dl), intent(in) :: a, tau, k, photon_density_initial_condition
+    real(dl) :: w, xi_interaction, C
+    !Get intinitial values for perturbations at a (or tau)
+    !For standard adiabatic perturbations can usually just set to zero to good accuracy
+
+    xi_interaction = this%xi_interaction
+    w = this%w_de(1._dl)
+    C = -(1 + w + xi_interaction/3)/(12*w**2 - 2*w - 3*w*xi_interaction + 7*xi_interaction - 14) * 3/2 * photon_density_initial_condition
+    y(1) = (1+w-2*xi_interaction)*C
+    y(2) = k*tau*C
+
+    end subroutine TDarkEnergyFluid_PerturbationInitial
+    ! JVR Modification Ends
 
 
     subroutine TDarkEnergyFluid_ReadParams(this, Ini)

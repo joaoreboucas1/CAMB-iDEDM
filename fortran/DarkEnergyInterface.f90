@@ -148,17 +148,18 @@
     integer, intent(in) :: w_ix
     end subroutine PerturbationEvolve
 
-    subroutine PerturbationInitial(this, y, a, tau, k)
+    ! JVR Modification Begins
+    subroutine PerturbationInitial(this, y, a, tau, k, photon_density_initial_condition)
     class(TDarkEnergyModel), intent(in) :: this
     real(dl), intent(out) :: y(:)
-    real(dl), intent(in) :: a, tau, k
+    real(dl), intent(in) :: a, tau, k, photon_density_initial_condition
     !Get intinitial values for perturbations at a (or tau)
     !For standard adiabatic perturbations can usually just set to zero to good accuracy
 
     y = 0
 
     end subroutine PerturbationInitial
-
+    ! JVR Modification Ends
 
     subroutine TDarkEnergyEqnOfState_SetwTable(this, a, w, n)
     class(TDarkEnergyEqnOfState) :: this
