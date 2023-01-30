@@ -2313,7 +2313,8 @@
 
     !  CDM equation of motion
     ! JVR Modification Begins
-    clxcdot=-k*z * (1 - State%CP%DarkEnergy%xi_interaction *  grhov_t/ grhoc_t / 3) + State%CP%DarkEnergy%xi_interaction * adotoa * (grhov_t/grhoc_t) * (ay(EV%w_ix) - ay(ix_clxc))
+    clxcdot=-k*z * (1 - State%CP%DarkEnergy%xi_interaction *  (grhov_t/grhoc_t) / 3) &
+     + State%CP%DarkEnergy%xi_interaction * adotoa * (grhov_t/grhoc_t) * (ay(EV%w_ix) - clxc)
     ayprime(ix_clxc)=clxcdot
     ! JVR Modification Ends
 

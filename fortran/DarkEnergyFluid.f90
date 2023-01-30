@@ -53,10 +53,14 @@
     !For standard adiabatic perturbations can usually just set to zero to good accuracy
 
     xi_interaction = this%xi_interaction
+    if xi_interaction==0 then
+        y = 0
+    else
     w = this%w_de(1._dl)
-    C = -(1 + w + xi_interaction/3)/(12*w**2 - 2*w - 3*w*xi_interaction + 7*xi_interaction - 14) * 3/2 * photon_density_initial_condition
+    C = -(1 + w + xi_interaction/3)/(12*w**2 - 2*w - 3*w*xi_interaction + 7*xi_interaction - 14) * (3/2) * photon_density_initial_condition
     y(1) = (1+w-2*xi_interaction)*C
     y(2) = k*tau*C
+    end if
 
     end subroutine TDarkEnergyFluid_PerturbationInitial
     ! JVR Modification Ends
