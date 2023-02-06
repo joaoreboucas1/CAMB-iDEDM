@@ -2212,7 +2212,7 @@
     ! JVR Modification Begins
     xi_interaction = State%CP%DarkEnergy%xi_interaction
     w_eff = w_dark_energy_t + xi_interaction/3._dl
-    grhoc_t=State%grhoc/a + xi_interaction * State%grhov * (1 - a**(-3._dl*w_eff)) / (3._dl * w_eff) / a
+    grhoc_t=State%grhoc/a + xi_interaction * State%grhov * (1._dl - a**(-3._dl*w_eff)) / (3._dl * w_eff) / a
     ! JVR Modification Ends
     grhor_t=State%grhornomass/a2
     grhog_t=State%grhog/a2
@@ -2313,9 +2313,9 @@
 
     !  CDM equation of motion
     ! JVR Modification Begins
-    clxcdot=-k*z * (1 - State%CP%DarkEnergy%xi_interaction *  (grhov_t/grhoc_t) / 3) &
-     + State%CP%DarkEnergy%xi_interaction * adotoa * (grhov_t/grhoc_t) * (ay(EV%w_ix) - clxc)
-    ayprime(ix_clxc)=clxcdot
+    clxcdot = - k * z * (1._dl - xi_interaction *  (grhov_t/grhoc_t) / 3._dl) &
+     + xi_interaction * adotoa * (grhov_t/grhoc_t) * (ay(EV%w_ix) - clxc)
+    ayprime(ix_clxc) = clxcdot
     ! JVR Modification Ends
 
     !  Baryon equation of motion.

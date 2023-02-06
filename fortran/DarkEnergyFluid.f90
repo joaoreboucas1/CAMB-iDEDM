@@ -56,10 +56,12 @@
     if (xi_interaction==0) then
         y = 0
     else
-    w = this%w_de(1._dl)
-    C = -(1._dl + w + xi_interaction/3._dl)/(12._dl*w**2 - 2._dl*w - 3._dl*w*xi_interaction + 7._dl*xi_interaction - 14._dl) * 1.5_dl * photon_density_initial_condition
-    y(1) = (1+w-2*xi_interaction)*C
-    y(2) = k*tau*C
+        w = this%w_lam
+        C = -(1._dl + w + xi_interaction/3._dl)/ &
+        (12._dl*w**2 - 2._dl*w - 3._dl*w*xi_interaction + 7._dl*xi_interaction - 14._dl)*&
+        1.5_dl * photon_density_initial_condition
+        y(1) = (1+w-2*xi_interaction)*C
+        y(2) = k*k*tau*C
     end if
 
     end subroutine TDarkEnergyFluid_PerturbationInitial
@@ -132,7 +134,7 @@
         dgqe=0
     else
         dgrhoe = ay(w_ix) * grhov_t
-        dgqe = ay(w_ix + 1) * grhov_t * (1 + w)
+        dgqe = ay(w_ix + 1) * grhov_t * (1 + w) / k
     end if
     end subroutine TDarkEnergyFluid_PerturbedStressEnergy
 
@@ -145,11 +147,11 @@
     integer, intent(in) :: w_ix
     real(dl) Hv3_over_k, loga
 
-    Hv3_over_k =  3._dl * adotoa * y(w_ix + 1) / k
+    Hv3_over_k =  3._dl * adotoa * y(w_ix + 1) / k / k
     !density perturbation
     ! JVR Modification Begins
     ayprime(w_ix) = - 3._dl * adotoa * (this%cs2_lam - w) *  (y(w_ix) + Hv3_over_k * (1 + w + this%xi_interaction/3._dl)) &
-        -  (1 + w) * k * y(w_ix + 1) - (1 + w) * k * z * (1 + this%xi_interaction / (3._dl*(1+w)))
+        -  (1 + w) * y(w_ix + 1) - (1 + w) * k * z * (1 + this%xi_interaction / (3._dl*(1+w)))
     ! JVR Modification Ends
     if (this%use_tabulated_w) then
         !account for derivatives of w
@@ -165,7 +167,7 @@
         ! JVR Modification Begins
         ! JVR TODO: implement CDM velocity??
         ayprime(w_ix + 1) = - adotoa * (1 - 3._dl * this%cs2_lam) * y(w_ix + 1) * (1 + this%xi_interaction * (1._dl - 0d0) / (1._dl+w)) + &
-            k * this%cs2_lam * y(w_ix) / (1 + w)
+            k * k * this%cs2_lam * y(w_ix) / (1 + w)
         ! JVR Modification Ends
     else
         ayprime(w_ix + 1) = 0

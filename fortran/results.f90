@@ -1225,8 +1225,9 @@
 
     ! JVR Modification Begins
     xi_interaction = this%CP%DarkEnergy%xi_interaction
-    w_eff = this%CP%DarkEnergy%w_de(a) + xi_interaction / 3
-    grhoa2 = this%grhok * a**2 + (this%grhoc + this%grhob) * a + this%grhog + this%grhornomass + xi_interaction * this%grhov * a * (1 - a**(-3._dl*w_eff)) / (3._dl * w_eff)
+    w_eff = this%CP%DarkEnergy%w_de(a) + xi_interaction / 3._dl
+    grhoa2 = this%grhok * a**2 + (this%grhoc + this%grhob) * a + this%grhog + this%grhornomass &
+    + xi_interaction * this%grhov * a * (1._dl - a**(-3._dl*w_eff)) / (3._dl * w_eff)
     ! JVR Modification Ends
     if (this%CP%Num_Nu_massive /= 0) then
         !Get massive neutrino density relative to massless
