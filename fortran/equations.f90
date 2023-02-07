@@ -2313,8 +2313,7 @@
 
     !  CDM equation of motion
     ! JVR Modification Begins
-    clxcdot = - k * z * (1._dl - xi_interaction *  (grhov_t/grhoc_t) / 3._dl) &
-     + xi_interaction * adotoa * (grhov_t/grhoc_t) * (ay(EV%w_ix) - clxc)
+    clxcdot = - k * z + xi_interaction * (grhov_t/grhoc_t) * (adotoa*(ay(EV%w_ix) - clxc) + k*z/3._dl)
     ayprime(ix_clxc) = clxcdot
     ! JVR Modification Ends
 
