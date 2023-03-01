@@ -13,7 +13,7 @@
     procedure :: ReadParams => TDarkEnergyFluid_ReadParams
     procedure, nopass :: PythonClass => TDarkEnergyFluid_PythonClass
     procedure, nopass :: SelfPointer => TDarkEnergyFluid_SelfPointer
-    procedure :: Init =>TDarkEnergyFluid_Init
+    procedure :: Init => TDarkEnergyFluid_Init
     procedure :: PerturbedStressEnergy => TDarkEnergyFluid_PerturbedStressEnergy
     procedure :: PerturbationEvolve => TDarkEnergyFluid_PerturbationEvolve
     procedure :: PerturbationInitial => TDarkEnergyFluid_PerturbationInitial ! JVR Modification
@@ -44,26 +44,27 @@
     contains
 
     ! JVR Modification Begins
-    subroutine TDarkEnergyFluid_PerturbationInitial(this, y, a, tau, k, photon_density_initial_condition)
-    class(TDarkEnergyFluid), intent(in) :: this
-    real(dl), intent(out) :: y(:)
-    real(dl), intent(in) :: a, tau, k, photon_density_initial_condition
-    real(dl) :: w, xi_interaction, C
-    !Get intinitial values for perturbations at a (or tau)
+    subroutine TDarkEnergyFluid_PerturbationInitial(this, y, a, tau, k, w_ix, photon_density_initial_condition)
+    class(TDarkEnergyFluid), intent(in)  :: this
+    real(dl),                intent(inout) :: y(:)
+    real(dl),                intent(in)  :: a, tau, k, photon_density_initial_condition
+    real(dl)                             :: w, xi, factor
+    integer,                 intent(in)  :: w_ix
+    !Get initial values for perturbations at a (or tau)
     !For standard adiabatic perturbations can usually just set to zero to good accuracy
 
-    xi_interaction = this%xi_interaction
-    if (xi_interaction==0) then
-        y = 0
+    xi = this%xi_interaction
+    if (xi==0d0) then
+        y(w_ix) = 0
+        y(w_ix + 1) = 0
     else
         w = this%w_lam
-        C = -(1._dl + w + xi_interaction/3._dl)/ &
-        (12._dl*w**2 - 2._dl*w - 3._dl*w*xi_interaction + 7._dl*xi_interaction - 14._dl)*&
+        factor = -(1._dl + w + xi/3._dl) / &
+        (12._dl*w*w - 2._dl*w - 3._dl*w*xi + 7._dl*xi - 14._dl) * &
         1.5_dl * photon_density_initial_condition
-        y(1) = (1+w-2*xi_interaction)*C
-        y(2) = k*tau*C
+        y(w_ix) = (1._dl + w - 2._dl*xi) * factor
+        y(w_ix + 1) = k * tau * factor
     end if
-
     end subroutine TDarkEnergyFluid_PerturbationInitial
     ! JVR Modification Ends
 
@@ -104,6 +105,12 @@
 
     call this%TDarkEnergyEqnOfState%Init(State)
 
+    if (this%xi_interaction /= 0) then
+        this%is_cosmological_constant = .false.
+        this%num_perturb_equations = 2
+        this%cs2_lam = 1._dl
+    end if
+
     if (this%is_cosmological_constant) then
         this%num_perturb_equations = 0
     else
@@ -134,25 +141,32 @@
         dgqe=0
     else
         dgrhoe = ay(w_ix) * grhov_t
-        dgqe = ay(w_ix + 1) * grhov_t * (1 + w)
+        dgqe   = ay(w_ix + 1) * grhov_t * (1._dl + w)
     end if
     end subroutine TDarkEnergyFluid_PerturbedStressEnergy
 
 
     subroutine TDarkEnergyFluid_PerturbationEvolve(this, ayprime, w, w_ix, &
         a, adotoa, k, z, y)
-    class(TDarkEnergyFluid), intent(in) :: this
-    real(dl), intent(inout) :: ayprime(:)
-    real(dl), intent(in) :: a, adotoa, w, k, z, y(:)
-    integer, intent(in) :: w_ix
-    real(dl) Hv3_over_k, loga
+    class(TDarkEnergyFluid), intent(in)    :: this
+    integer,                 intent(in)    :: w_ix
+    real(dl),                intent(inout) :: ayprime(:)
+    real(dl),                intent(in)    :: a, adotoa, w, k, z, y(:)
+    real(dl)                               :: Hv3_over_k, loga, delta_de, vel_de, w_de_plus_one, xi
+    !! Computes the derivatives delta_de' and v_de',
+    !! where primes are derivatives w.r.t. conformal time
 
-    Hv3_over_k =  3._dl * adotoa * y(w_ix + 1) / k
-    ! density perturbation
+    Hv3_over_k    = 3._dl * adotoa * y(w_ix + 1) / k
+    delta_de      = y(w_ix)
+    vel_de        = y(w_ix + 1)
+    w_de_plus_one = w + 1._dl
+    xi = this%xi_interaction
+    
+    ! Density perturbation equation
     ! JVR Modification Begins
-    ayprime(w_ix) = -(1._dl+this%w_lam) * k * (y(w_ix + 1) + z) - 3._dl * adotoa * (1._dl-this%w_lam) &
-                    * (y(w_ix) + adotoa * y(w_ix + 1) / k * (3._dl*(1._dl+this%w_lam) + this%xi_interaction)) &
-                    - this%xi_interaction * k * z / 3._dl
+    ayprime(w_ix) = - w_de_plus_one * k * (vel_de + z) - 3._dl * adotoa * (1._dl - w) &
+                    * (delta_de + (adotoa * vel_de / k) * (3._dl * w_de_plus_one * 10._dl + xi)) &
+                    - xi * k * z / 3._dl
     ! JVR Modification Ends
     if (this%use_tabulated_w) then
         !account for derivatives of w
@@ -163,16 +177,15 @@
     elseif (this%wa/=0) then
         ayprime(w_ix) = ayprime(w_ix) + Hv3_over_k*this%wa*adotoa*a
     end if
-    !velocity
-    if (abs(w+1) > 1e-6) then
+    ! Velocity equation
+    if (abs(w + 1._dl) > 1e-6) then
         ! JVR Modification Begins
-        ayprime(w_ix + 1) = 2 * adotoa * y(w_ix + 1) * (1 + this%xi_interaction / (1._dl+w)) + &
-            k * y(w_ix) / (1 + w)
+        ayprime(w_ix + 1) = 2._dl * adotoa * vel_de * (1._dl + xi / w_de_plus_one) + &
+                            k * delta_de / w_de_plus_one
         ! JVR Modification Ends
     else
         ayprime(w_ix + 1) = 0
     end if
-
     end subroutine TDarkEnergyFluid_PerturbationEvolve
 
 
