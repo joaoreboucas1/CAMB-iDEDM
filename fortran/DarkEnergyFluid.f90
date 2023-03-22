@@ -165,7 +165,7 @@
     ! Density perturbation equation
     ! JVR Modification Begins
     ayprime(w_ix) = - w_de_plus_one * k * (vel_de + z) - 3._dl * adotoa * (1._dl - w) &
-                    * (delta_de + (adotoa * vel_de / k) * (3._dl * w_de_plus_one * 10._dl + xi)) &
+                    * (delta_de + (adotoa * vel_de / k) * (3._dl * w_de_plus_one + xi)) &
                     - xi * k * z / 3._dl
     ! JVR Modification Ends
     if (this%use_tabulated_w) then
