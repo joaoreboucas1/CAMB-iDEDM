@@ -1934,8 +1934,8 @@
     !             to 2.
     ! JVR Modification Begins
     if (CP%DarkEnergy%num_perturb_equations > 0) then
-        call CP%DarkEnergy%PerturbationInitial(InitVec(i_clxde:i_clxde + CP%DarkEnergy%num_perturb_equations - 1), &
-            a, tau,  k, InitVec(i_clxg))
+        call CP%DarkEnergy%PerturbationInitial(InitVec, &
+            a, tau,  k, i_clxde, InitVec(i_clxg))
         ! JVR Modification Ends
         y(EV%w_ix:EV%w_ix + CP%DarkEnergy%num_perturb_equations - 1) = &
             InitVec(i_clxde:i_clxde + CP%DarkEnergy%num_perturb_equations - 1)
