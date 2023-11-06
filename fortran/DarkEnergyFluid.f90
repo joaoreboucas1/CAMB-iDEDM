@@ -9,6 +9,8 @@
     type, extends(TDarkEnergyEqnOfState) :: TDarkEnergyFluid
         !comoving sound speed is always exactly 1 for quintessence
         !(otherwise assumed constant, though this is almost certainly unrealistic)
+        ! JVR modification: have a flag for using PPF equations
+        logical :: use_ppf = .false.
     contains
     procedure :: ReadParams => TDarkEnergyFluid_ReadParams
     procedure, nopass :: PythonClass => TDarkEnergyFluid_PythonClass
@@ -54,7 +56,7 @@
     !For standard adiabatic perturbations can usually just set to zero to good accuracy
 
     xi = this%xi_interaction
-    if (xi==0d0) then
+    if (xi == 0d0) then
         y(w_ix) = 0
         y(w_ix + 1) = 0
     else
@@ -107,7 +109,11 @@
 
     if (this%xi_interaction /= 0) then
         this%is_cosmological_constant = .false.
-        this%num_perturb_equations = 2
+        if (this%use_ppf) then
+            this%num_perturb_equations = 2
+        else
+            this%num_perturb_equations = 1
+        end if
         this%cs2_lam = 1._dl
     end if
 
@@ -136,13 +142,20 @@
     real(dl), intent(inout) :: ayprime(*)
     integer, intent(in) :: w_ix
 
-    if (this%no_perturbations) then
-        dgrhoe=0
-        dgqe=0
+    ! JVR Modification: calling PPF perturbations
+    if (this%use_ppf) then
+        call PPF_Perturbations(this, dgrhoe, dgqe, &
+        a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, &
+        etak, adotoa, k, kf1, ay, ayprime, w_ix)
     else
-        dgrhoe = ay(w_ix) * grhov_t
-        dgqe   = ay(w_ix + 1) * grhov_t * (1._dl + w)
-    end if
+        if (this%no_perturbations) then
+            dgrhoe=0
+            dgqe=0
+        else
+            dgrhoe = ay(w_ix) * grhov_t
+            dgqe   = ay(w_ix + 1) * grhov_t * (1._dl + w)
+        end if
+    end if    
     end subroutine TDarkEnergyFluid_PerturbedStressEnergy
 
 
@@ -155,6 +168,11 @@
     real(dl)                               :: Hv3_over_k, loga, delta_de, vel_de, w_de_plus_one, xi
     !! Computes the derivatives delta_de' and v_de',
     !! where primes are derivatives w.r.t. conformal time
+
+    ! JVR Modification: the PPF equations are set in the PerturbedStressEnergy subroutine
+    if (this%use_ppf) then
+        return
+    end if
 
     Hv3_over_k    = 3._dl * adotoa * y(w_ix + 1) / k
     delta_de      = y(w_ix)
@@ -332,5 +350,47 @@
     dgqe = ay(w_ix + 1) * grhov_t
 
     end subroutine TAxionEffectiveFluid_PerturbedStressEnergy
+
+    ! JVR Modification: add PPF perturbations
+    subroutine PPF_Perturbations(this, dgrhoe, dgqe, &
+        a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1, ay, ayprime, w_ix)
+        class(TDarkEnergyFluid), intent(inout) :: this
+        real(dl), intent(out) :: dgrhoe, dgqe
+        real(dl), intent(in) :: grhov_t
+        real(dl), intent(in) :: w
+        real(dl), intent(in) :: a, dgq, dgrho, grho, gpres_noDE, etak, adotoa, k, kf1
+        real(dl), intent(in) :: ay(*)
+        real(dl), intent(inout) :: ayprime(*)
+        integer, intent(in) :: w_ix
+        real(dl) :: grhoT, vT, k2, sigma, S_Gamma, ckH, Gamma, Gammadot, Fa, c_Gamma_ppf
+    
+        k2=k**2
+        grhoT = grho - grhov_t
+        vT = dgq / (grhoT + gpres_noDE)
+        Gamma = ay(w_ix)
+        c_Gamma_ppf = 0.4_dl
+    
+        !sigma for ppf
+        sigma = (etak + (dgrho + 3 * adotoa / k * dgq) / 2._dl / k) / kf1 - &
+            k * Gamma
+        sigma = sigma / adotoa
+    
+        S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2
+        ckH = c_Gamma_ppf * k / adotoa
+    
+        if (ckH * ckH .gt. 3.d1) then ! ckH^2 > 30 ?????????
+            Gamma = 0
+            Gammadot = 0.d0
+        else
+            Gammadot = S_Gamma / (1 + ckH * ckH) - Gamma - ckH * ckH * Gamma
+            Gammadot = Gammadot * adotoa
+        endif
+        ayprime(w_ix) = Gammadot ! Set this here, and don't use PerturbationEvolve
+    
+        Fa = 1 + 3 * (grhoT + gpres_noDE) / 2._dl / k2 / kf1
+        dgqe = S_Gamma - Gammadot / adotoa - Gamma
+        dgqe = -dgqe / Fa * 2._dl * k * adotoa + vT * grhov_t * (1 + w)
+        dgrhoe = -2 * k2 * kf1 * Gamma - 3 / k * adotoa * dgqe
+    end subroutine PPF_Perturbations
 
     end module DarkEnergyFluid
