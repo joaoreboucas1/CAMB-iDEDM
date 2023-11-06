@@ -9,4 +9,4 @@ $ pip install .
 ```
 
 # Usage
-Check the notebook in docs/iDEDM.ipynb
+Check the notebook in  `docs/iDEDM.ipynb`
