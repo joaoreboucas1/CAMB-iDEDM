@@ -10,6 +10,7 @@
         !comoving sound speed is always exactly 1 for quintessence
         !(otherwise assumed constant, though this is almost certainly unrealistic)
         ! JVR modification: have a flag for using PPF equations
+        ! TODO: put use_ppf flag in the Python interface
         logical :: use_ppf = .false.
     contains
     procedure :: ReadParams => TDarkEnergyFluid_ReadParams
@@ -60,6 +61,7 @@
         y(w_ix) = 0
         y(w_ix + 1) = 0
     else
+        ! TODO: initial perturbations for PPF
         w = this%w_lam
         factor = -(1._dl + w + xi/3._dl) / &
         (12._dl*w*w - 2._dl*w - 3._dl*w*xi + 7._dl*xi - 14._dl) * &
@@ -166,8 +168,8 @@
     real(dl),                intent(inout) :: ayprime(:)
     real(dl),                intent(in)    :: a, adotoa, w, k, z, y(:)
     real(dl)                               :: Hv3_over_k, loga, delta_de, vel_de, w_de_plus_one, xi
-    !! Computes the derivatives delta_de' and v_de',
-    !! where primes are derivatives w.r.t. conformal time
+    ! Computes the derivatives delta_de' and v_de',
+    ! where primes are derivatives w.r.t. conformal time
 
     ! JVR Modification: the PPF equations are set in the PerturbedStressEnergy subroutine
     if (this%use_ppf) then
@@ -205,8 +207,6 @@
         ayprime(w_ix + 1) = 0
     end if
     end subroutine TDarkEnergyFluid_PerturbationEvolve
-
-
 
     subroutine TAxionEffectiveFluid_ReadParams(this, Ini)
     use IniObjects
@@ -362,35 +362,57 @@
         real(dl), intent(in) :: ay(*)
         real(dl), intent(inout) :: ayprime(*)
         integer, intent(in) :: w_ix
-        real(dl) :: grhoT, vT, k2, sigma, S_Gamma, ckH, Gamma, Gammadot, Fa, c_Gamma_ppf
+        real(dl) :: grhoT, vT, k2, sigma, S_Gamma, ckH, Gamma, Gammadot, Fa, c_Gamma_ppf, kH, Q
     
-        k2=k**2
+        k2 = k**2
         grhoT = grho - grhov_t
         vT = dgq / (grhoT + gpres_noDE)
         Gamma = ay(w_ix)
         c_Gamma_ppf = 0.4_dl
+        Q = this%xi_interaction * adotoa * grhov_t / a / a ! TODO: check if this is correct (factors of a)
+        ! Note: for the remainder of the equations, there is no need to multiply a * Q
     
-        !sigma for ppf
-        sigma = (etak + (dgrho + 3 * adotoa / k * dgq) / 2._dl / k) / kf1 - &
-            k * Gamma
+        ! Original implementation of sigma
+        ! sigma = (etak + (dgrho + 3 * adotoa / k * dgq) / 2._dl / k) / kf1 - k * Gamma
+        ! sigma = sigma / adotoa
+
+        ! JVR Modification: sigma according to Eq. 5.17 from https://arxiv.org/pdf/2306.01593.pdf
+        ! We can see that if Q = 0, Eq. 5.17 is equivalent to the original code
+        ! So just add another term for the Q
+        ! TODO: check how to get total energy density and pressure to add in the denominator of Q
+        kH = k / adotoa
+        sigma = (etak + (dgrho + 3 * adotoa / k * dgq * (1 + Q / (3 * adotoa * (grho + gpres_noDE + grhov_t * w)))) / 2._dl / k) / kf1 - k * Gamma
         sigma = sigma / adotoa
     
-        S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2
         ckH = c_Gamma_ppf * k / adotoa
-    
+        ! Original implementation of S_Gamma:
+        !S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2
+        
+        ! TODO: how to get v_c from ay?
+        S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2 + (kappa * a * a / 2._dl / k2) * (3 * a * Q) / ckH * (v_c - vT) - Q * xi_0
+
+
+        ! TODO: how to get xi_0?
+        ! See equations 5.19 and 4.13
+        xi_0 = ...
+
         if (ckH * ckH .gt. 3.d1) then ! ckH^2 > 30 ?????????
             Gamma = 0
             Gammadot = 0.d0
         else
-            Gammadot = S_Gamma / (1 + ckH * ckH) - Gamma - ckH * ckH * Gamma
+            ! JVR Modification: adding a term to S_0 (Eq. 4.17)
+            ! Original implementation of Gammadot:
+            ! Gammadot = S_Gamma / (1 + ckH * ckH) - Gamma - ckH * ckH * Gamma
+            Gammadot = (S_Gamma + a * Q * Gamma / grhov_t) / (1 + ckH * ckH) - Gamma - ckH * ckH * Gamma
+
             Gammadot = Gammadot * adotoa
         endif
         ayprime(w_ix) = Gammadot ! Set this here, and don't use PerturbationEvolve
     
         Fa = 1 + 3 * (grhoT + gpres_noDE) / 2._dl / k2 / kf1
         dgqe = S_Gamma - Gammadot / adotoa - Gamma
-        dgqe = -dgqe / Fa * 2._dl * k * adotoa + vT * grhov_t * (1 + w)
-        dgrhoe = -2 * k2 * kf1 * Gamma - 3 / k * adotoa * dgqe
+        dgqe = -dgqe / Fa * 2._dl * k * adotoa + vT * grhov_t * (1 + w) ! No need to change this equation
+        dgrhoe = -2 * k2 * kf1 * Gamma - 3 / k * adotoa * dgqe + Q * vT / k ! Added a new term
     end subroutine PPF_Perturbations
 
     end module DarkEnergyFluid
