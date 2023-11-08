@@ -368,8 +368,11 @@
         vT = dgq / (grhoT + gpres_noDE)
         Gamma = ay(w_ix)
         c_Gamma_ppf = 0.4_dl
-        Q = this%xi_interaction * adotoa * grhov_t / a / a ! TODO: check if this is correct (factors of a)
+        Q = this%xi_interaction * adotoa * grhov_t
+        
+        ! Note: since Q is divided by grho, there is no need to cancel the 8*pi*G*a^2 factors
         ! Note: for the remainder of the equations, there is no need to multiply a * Q
+        ! since Q = \xi * H * \rho_de and a * Q = \xi * \mathcal{H} * \rho_de which is calculated here
     
         ! Original implementation of sigma
         ! sigma = (etak + (dgrho + 3 * adotoa / k * dgq) / 2._dl / k) / kf1 - k * Gamma
