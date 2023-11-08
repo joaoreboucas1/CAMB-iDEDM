@@ -60,13 +60,17 @@
         y(w_ix) = 0
         y(w_ix + 1) = 0
     else
-        ! TODO: initial perturbations for PPF
-        w = this%w_lam
-        factor = -(1._dl + w + xi/3._dl) / &
-        (12._dl*w*w - 2._dl*w - 3._dl*w*xi + 7._dl*xi - 14._dl) * &
-        1.5_dl * photon_density_initial_condition
-        y(w_ix) = (1._dl + w - 2._dl*xi) * factor
-        y(w_ix + 1) = k * tau * factor
+        if (this%use_ppf_interaction) then
+            ! TODO: initial perturbations for PPF
+            y(w_ix) = 0
+        else
+            w = this%w_lam
+            factor = -(1._dl + w + xi/3._dl) / &
+            (12._dl*w*w - 2._dl*w - 3._dl*w*xi + 7._dl*xi - 14._dl) * &
+            1.5_dl * photon_density_initial_condition
+            y(w_ix) = (1._dl + w - 2._dl*xi) * factor
+            y(w_ix + 1) = k * tau * factor
+        end if
     end if
     end subroutine TDarkEnergyFluid_PerturbationInitial
     ! JVR Modification Ends
@@ -108,16 +112,6 @@
 
     call this%TDarkEnergyEqnOfState%Init(State)
 
-    if (this%xi_interaction /= 0) then
-        this%is_cosmological_constant = .false.
-        if (this%use_ppf_interaction) then
-            this%num_perturb_equations = 2
-        else
-            this%num_perturb_equations = 1
-        end if
-        this%cs2_lam = 1._dl
-    end if
-
     if (this%is_cosmological_constant) then
         this%num_perturb_equations = 0
     else
@@ -128,7 +122,15 @@
             ((1+this%w_lam < -1.e-6_dl) .or. 1+this%w_lam + this%wa < -1.e-6_dl)) then
             error stop 'Fluid dark energy model does not allow w crossing -1'
         end if
-        this%num_perturb_equations = 2
+        if (this%xi_interaction /= 0) then
+            this%is_cosmological_constant = .false.
+            if (this%use_ppf_interaction) then
+                this%num_perturb_equations = 1
+            else
+                this%num_perturb_equations = 2
+            end if
+            this%cs2_lam = 1._dl
+        end if
     end if
 
     end subroutine TDarkEnergyFluid_Init
@@ -368,12 +370,14 @@
         vT = dgq / (grhoT + gpres_noDE)
         Gamma = ay(w_ix)
         c_Gamma_ppf = 0.4_dl
-        Q = this%xi_interaction * adotoa * grhov_t
         v_c = 0.d0
         
-        ! Note: since Q is divided by grho, there is no need to cancel the 8*pi*G*a^2 factors
         ! Note: for the remainder of the equations, there is no need to multiply a * Q
         ! since Q = \xi * H * \rho_de and a * Q = \xi * \mathcal{H} * \rho_de which is calculated here
+        ! Note: since Q is divided by grho, there is no need to cancel the 8*pi*G*a^2 factors
+        ! So Q here is actually kappa * a^2 * a * Q_{paper}
+        Q = this%xi_interaction * adotoa * grhov_t
+
     
         ! Original implementation of sigma
         ! sigma = (etak + (dgrho + 3 * adotoa / k * dgq) / 2._dl / k) / kf1 - k * Gamma
@@ -384,7 +388,7 @@
         ! So just add another term for the Q
         ! TODO: check how to get total energy density and pressure to add in the denominator of Q
         kH = k / adotoa
-        sigma = (etak + (dgrho + 3 * adotoa / k * dgq * (1 + Q / (3 * adotoa * (grho + gpres_noDE + grhov_t * w)))) / 2._dl / k) / kf1 - k * Gamma
+        sigma = (etak + (dgrho + 3 * adotoa / k * dgq * (1 + Q / (3 * adotoa * (grhoT + gpres_noDE)))) / 2._dl / k) / kf1 - k * Gamma
         sigma = sigma / adotoa
     
         ckH = c_Gamma_ppf * k / adotoa
@@ -393,9 +397,9 @@
 
         ! TODO: how to get xi_0?
         ! See equations 5.19 and 4.13
-        xi_0 = 0.d0
+        xi_0 = 0._d0
 
-        S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2 - (kappa * a * a / 2._dl / k2) * (3 * Q) / kH * (v_c - vT) - Q * xi_0
+        S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2 - (1._dl / 2._dl / k2) * (3 * Q) / k * (v_c - vT) - Q * xi_0 / adotoa
         
         if (ckH * ckH .gt. 3.d1) then ! ckH^2 > 30 ?????????
             Gamma = 0
@@ -404,8 +408,8 @@
             ! JVR Modification: adding a term to S_0 (Eq. 4.17)
             ! Original implementation of Gammadot:
             ! Gammadot = S_Gamma / (1 + ckH * ckH) - Gamma - ckH * ckH * Gamma
-            Gammadot = (S_Gamma + a * Q * Gamma / grhov_t) / (1 + ckH * ckH) - Gamma - ckH * ckH * Gamma
-
+            Gammadot = (S_Gamma + Q * Gamma / grhov_t * kappa * a * a) / (1 + ckH * ckH) - Gamma - ckH * ckH * Gamma
+            ! JVR Note: have to cancel the kappa * a^2 factor from grhov_t
             Gammadot = Gammadot * adotoa
         endif
         ayprime(w_ix) = Gammadot ! Set this here, and don't use PerturbationEvolve
