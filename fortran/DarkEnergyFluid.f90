@@ -369,6 +369,7 @@
         Gamma = ay(w_ix)
         c_Gamma_ppf = 0.4_dl
         Q = this%xi_interaction * adotoa * grhov_t
+        v_c = 0.d0
         
         ! Note: since Q is divided by grho, there is no need to cancel the 8*pi*G*a^2 factors
         ! Note: for the remainder of the equations, there is no need to multiply a * Q
@@ -389,16 +390,13 @@
         ckH = c_Gamma_ppf * k / adotoa
         ! Original implementation of S_Gamma:
         !S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2
-        
-        ! TODO: how to get v_c from ay?
-        S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2 + (kappa * a * a / 2._dl / k2) * (3 * a * Q) / ckH * (v_c - vT) - Q * xi_0
-
 
         ! TODO: how to get xi_0?
         ! See equations 5.19 and 4.13
         xi_0 = 0.d0
-        v_c = 0.d0
 
+        S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2 - (kappa * a * a / 2._dl / k2) * (3 * Q) / kH * (v_c - vT) - Q * xi_0
+        
         if (ckH * ckH .gt. 3.d1) then ! ckH^2 > 30 ?????????
             Gamma = 0
             Gammadot = 0.d0
