@@ -10,7 +10,8 @@ class DarkEnergyModel(F2003Class):
     _fields_ = [
         ("__is_cosmological_constant", c_bool),
         ("__num_perturb_equations", c_int),
-        ("xi_interaction", c_double, "DE-DM Coupling Strength")
+        ("xi_interaction", c_double, "DE-DM Coupling Strength"),
+        ("use_ppf_interaction", c_bool, "Flag to use PPF in interaction perturbations")
     ]
 
     def validate_params(self):
@@ -40,7 +41,7 @@ class DarkEnergyEqnOfState(DarkEnergyModel):
 
     _methods_ = [('SetWTable', [numpy_1d, numpy_1d, POINTER(c_int)])]
 
-    def set_params(self, w=-1.0, wa=0, cs2=1.0, xi_interaction = 0):
+    def set_params(self, w=-1.0, wa=0, cs2=1.0, xi_interaction=0, use_ppf_interaction=False):
         """
          Set the parameters so that P(a)/rho(a) = w(a) = w + (1-a)*wa
 
@@ -52,6 +53,7 @@ class DarkEnergyEqnOfState(DarkEnergyModel):
         self.wa = wa
         self.cs2 = cs2
         self.xi_interaction = xi_interaction
+        self.use_ppf_interaction = use_ppf_interaction
         self.validate_params()
 
     def validate_params(self):

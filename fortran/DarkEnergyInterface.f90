@@ -11,6 +11,7 @@
         integer :: num_perturb_equations = 0
         ! JVR Modification Begin
         real(dl) :: xi_interaction = 0.0_dl ! Interaction coupling strength
+        logical :: use_ppf_interaction = .false. ! JVR modification: flag to use interaction PPF
         ! JVR Modification Ends
     contains
     procedure :: Init
@@ -33,6 +34,7 @@
         real(dl) :: cs2_lam = 1_dl !rest-frame sound speed, though may not be used
         logical :: use_tabulated_w = .false.  !Use interpolated table; note this is quite slow.
         logical :: no_perturbations = .false. !Don't change this, no perturbations is unphysical
+        
         !Interpolations if use_tabulated_w=.true.
         Type(TCubicSpline) :: equation_of_state, logdensity
     contains

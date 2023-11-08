@@ -9,9 +9,8 @@
     type, extends(TDarkEnergyEqnOfState) :: TDarkEnergyFluid
         !comoving sound speed is always exactly 1 for quintessence
         !(otherwise assumed constant, though this is almost certainly unrealistic)
-        ! JVR modification: have a flag for using PPF equations
-        ! TODO: put use_ppf flag in the Python interface
-        logical :: use_ppf = .false.
+        ! JVR Note: there are added fields in TDarkEnergyModel type
+        ! Namely the interaction coupling constant and the flag to use ppf or not
     contains
     procedure :: ReadParams => TDarkEnergyFluid_ReadParams
     procedure, nopass :: PythonClass => TDarkEnergyFluid_PythonClass
@@ -111,7 +110,7 @@
 
     if (this%xi_interaction /= 0) then
         this%is_cosmological_constant = .false.
-        if (this%use_ppf) then
+        if (this%use_ppf_interaction) then
             this%num_perturb_equations = 2
         else
             this%num_perturb_equations = 1
@@ -145,7 +144,7 @@
     integer, intent(in) :: w_ix
 
     ! JVR Modification: calling PPF perturbations
-    if (this%use_ppf) then
+    if (this%use_ppf_interaction) then
         call PPF_Perturbations(this, dgrhoe, dgqe, &
         a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, &
         etak, adotoa, k, kf1, ay, ayprime, w_ix)
@@ -172,7 +171,7 @@
     ! where primes are derivatives w.r.t. conformal time
 
     ! JVR Modification: the PPF equations are set in the PerturbedStressEnergy subroutine
-    if (this%use_ppf) then
+    if (this%use_ppf_interaction) then
         return
     end if
 
@@ -362,7 +361,7 @@
         real(dl), intent(in) :: ay(*)
         real(dl), intent(inout) :: ayprime(*)
         integer, intent(in) :: w_ix
-        real(dl) :: grhoT, vT, k2, sigma, S_Gamma, ckH, Gamma, Gammadot, Fa, c_Gamma_ppf, kH, Q
+        real(dl) :: grhoT, vT, k2, sigma, S_Gamma, ckH, Gamma, Gammadot, Fa, c_Gamma_ppf, kH, Q, v_c, xi_0
     
         k2 = k**2
         grhoT = grho - grhov_t
@@ -394,7 +393,8 @@
 
         ! TODO: how to get xi_0?
         ! See equations 5.19 and 4.13
-        xi_0 = ...
+        xi_0 = 0.d0
+        v_c = 0.d0
 
         if (ckH * ckH .gt. 3.d1) then ! ckH^2 > 30 ?????????
             Gamma = 0
