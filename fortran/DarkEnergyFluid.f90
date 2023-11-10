@@ -364,6 +364,8 @@
         real(dl), intent(inout) :: ayprime(*)
         integer, intent(in) :: w_ix
         real(dl) :: grhoT, vT, k2, sigma, S_Gamma, ckH, Gamma, Gammadot, Fa, c_Gamma_ppf, kH, Q, v_c, xi_0
+
+        ! Implementation based on lines 2919-2958 from https://github.com/liaocrane/IDECAMB/blob/master/camb/equations_ppfi.f90
     
         k2 = k**2
         grhoT = grho - grhov_t
@@ -387,17 +389,32 @@
         ! We can see that if Q = 0, Eq. 5.17 is equivalent to the original code
         ! So just add another term for the Q
         ! TODO: check how to get total energy density and pressure to add in the denominator of Q
+        ckH = c_Gamma_ppf * k / adotoa
         kH = k / adotoa
         sigma = (etak + (dgrho + 3 * adotoa / k * dgq * (1 + Q / (3 * adotoa * (grhoT + gpres_noDE)))) / 2._dl / k) / kf1 - k * Gamma
+
+        ! Copy from IDECAMB implementation
+        sigma = (etak + (dgrho + 3*adotoa/k*dgq + Q*vT/k)/2._dl/k)/kf1 - k*Gamma
         sigma = sigma / adotoa
-    
-        ckH = c_Gamma_ppf * k / adotoa
+
+        ! TODO: include dgpi in here from equations.f90
+        ! dgpi = grhor_t*pir + grhog_t*pig
+        !if (CP%Num_Nu_Massive > 0) then
+        !    call MassiveNuVarsOut(EV,ay,ayprime,a,dgpi)
+        !end if
         ! Original implementation of S_Gamma:
         !S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2
 
-        ! TODO: how to get xi_0?
+        ! TODO: implement xi_0
         ! See equations 5.19 and 4.13
+        !deltapT=(grhog_t*clxg+grhor_t*clxr+4*(grhog_t+grhor_t)*vT*adotoa/k)/3._dl
+        ! xi0 = -(deltapT - 2*EV%kf(1)*dgpi/3._dl - gD2*(vc-vT)/k)/(grhoT+gpres)
         xi_0 = 0.d0
+
+        ! TODO: implement correct expression for S_0:
+        ! S0 = -3*gD2*(vc-vT)*adotoa/k - gC2*(clxc +(3*adotoa+gQ/grhoc_t)*vT/k) - !gQ*xi0
+        ! S0 = grhov_t*(1+w_eff)*(vT+sigma)*k + S0/EV%kf(1)  
+        ! S0 = S0/2._dl/k2
 
         S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2 - (1._dl / 2._dl / k2) * (3 * Q) / k * (v_c - vT) - Q * xi_0 / adotoa
         
