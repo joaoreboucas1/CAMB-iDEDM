@@ -397,7 +397,7 @@
 
         ! TODO: how to get xi_0?
         ! See equations 5.19 and 4.13
-        xi_0 = 0._d0
+        xi_0 = 0.d0
 
         S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2 - (1._dl / 2._dl / k2) * (3 * Q) / k * (v_c - vT) - Q * xi_0 / adotoa
         
