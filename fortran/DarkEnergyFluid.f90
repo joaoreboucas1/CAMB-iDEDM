@@ -56,17 +56,20 @@
     !For standard adiabatic perturbations can usually just set to zero to good accuracy
 
     xi = this%xi_interaction
-    if (xi == 0d0) then
+    if (abs(xi) < 1e-4) then
         y(w_ix) = 0
         y(w_ix + 1) = 0
     else
-        ! TODO: initial perturbations for PPF
-        w = this%w_lam
-        factor = -(1._dl + w + xi/3._dl) / &
-        (12._dl*w*w - 2._dl*w - 3._dl*w*xi + 7._dl*xi - 14._dl) * &
-        1.5_dl * photon_density_initial_condition
-        y(w_ix) = (1._dl + w - 2._dl*xi) * factor
-        y(w_ix + 1) = k * tau * factor
+        if (this%use_ppf_interaction) then
+            y(w_ix) = 0
+        else
+            w = this%w_lam
+            factor = -(1._dl + w + xi/3._dl) / &
+            (12._dl*w*w - 2._dl*w - 3._dl*w*xi + 7._dl*xi - 14._dl) * &
+            1.5_dl * photon_density_initial_condition
+            y(w_ix) = (1._dl + w - 2._dl*xi) * factor
+            y(w_ix + 1) = k * tau * factor
+        end if
     end if
     end subroutine TDarkEnergyFluid_PerturbationInitial
     ! JVR Modification Ends
