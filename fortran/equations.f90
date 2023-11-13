@@ -2291,6 +2291,9 @@
     grhoT = grho - grhov_t
     vT = dgq / (grhoT + gpres_noDE)
     dgpi  = grhor_t*pir + grhog_t*pig
+    if (CP%Num_Nu_Massive > 0) then
+        call MassiveNuVarsOut(EV,ay,ayprime,a,dgpi)
+    end if
     deltapT=(grhog_t*clxg+grhor_t*clxr+4*(grhog_t+grhor_t)*vT*adotoa/k)/3._dl
     if (.not. EV%is_cosmological_constant) then
         call State%CP%DarkEnergy%PerturbedStressEnergy(dgrho_de, dgq_de, &

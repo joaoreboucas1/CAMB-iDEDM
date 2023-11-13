@@ -383,9 +383,6 @@
         ! sigma = sigma / adotoa
 
         ! JVR Modification: sigma according to Eq. 5.17 from https://arxiv.org/pdf/2306.01593.pdf
-        ! We can see that if Q = 0, Eq. 5.17 is equivalent to the original code
-        ! So just add another term for the Q
-        ! TODO: check how to get total energy density and pressure to add in the denominator of Q
         kH = k / adotoa
         sigma = (etak + (dgrho + 3*adotoa/k*dgq + Q*vT/k)/2._dl/k)/kf1 - k*Gamma
         sigma = sigma / adotoa
