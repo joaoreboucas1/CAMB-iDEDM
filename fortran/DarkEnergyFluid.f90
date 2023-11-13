@@ -60,17 +60,13 @@
         y(w_ix) = 0
         y(w_ix + 1) = 0
     else
-        if (this%use_ppf_interaction) then
-            ! TODO: initial perturbations for PPF
-            y(w_ix) = 0
-        else
-            w = this%w_lam
-            factor = -(1._dl + w + xi/3._dl) / &
-            (12._dl*w*w - 2._dl*w - 3._dl*w*xi + 7._dl*xi - 14._dl) * &
-            1.5_dl * photon_density_initial_condition
-            y(w_ix) = (1._dl + w - 2._dl*xi) * factor
-            y(w_ix + 1) = k * tau * factor
-        end if
+        ! TODO: initial perturbations for PPF
+        w = this%w_lam
+        factor = -(1._dl + w + xi/3._dl) / &
+        (12._dl*w*w - 2._dl*w - 3._dl*w*xi + 7._dl*xi - 14._dl) * &
+        1.5_dl * photon_density_initial_condition
+        y(w_ix) = (1._dl + w - 2._dl*xi) * factor
+        y(w_ix + 1) = k * tau * factor
     end if
     end subroutine TDarkEnergyFluid_PerturbationInitial
     ! JVR Modification Ends
@@ -112,6 +108,16 @@
 
     call this%TDarkEnergyEqnOfState%Init(State)
 
+    if (this%xi_interaction /= 0) then
+        this%is_cosmological_constant = .false.
+        if (this%use_ppf_interaction) then
+            this%num_perturb_equations = 2
+        else
+            this%num_perturb_equations = 1
+        end if
+        this%cs2_lam = 1._dl
+    end if
+
     if (this%is_cosmological_constant) then
         this%num_perturb_equations = 0
     else
@@ -122,25 +128,17 @@
             ((1+this%w_lam < -1.e-6_dl) .or. 1+this%w_lam + this%wa < -1.e-6_dl)) then
             error stop 'Fluid dark energy model does not allow w crossing -1'
         end if
-        if (this%xi_interaction /= 0) then
-            this%is_cosmological_constant = .false.
-            if (this%use_ppf_interaction) then
-                this%num_perturb_equations = 1
-            else
-                this%num_perturb_equations = 2
-            end if
-            this%cs2_lam = 1._dl
-        end if
+        this%num_perturb_equations = 2
     end if
 
     end subroutine TDarkEnergyFluid_Init
 
 
     subroutine TDarkEnergyFluid_PerturbedStressEnergy(this, dgrhoe, dgqe, &
-        a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1, ay, ayprime, w_ix)
+        a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1, ay, ayprime, w_ix, dgpi, deltapT)
     class(TDarkEnergyFluid), intent(inout) :: this
     real(dl), intent(out) :: dgrhoe, dgqe
-    real(dl), intent(in) ::  a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1
+    real(dl), intent(in) ::  a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1, dgpi, deltapT
     real(dl), intent(in) :: ay(*)
     real(dl), intent(inout) :: ayprime(*)
     integer, intent(in) :: w_ix
@@ -149,7 +147,7 @@
     if (this%use_ppf_interaction) then
         call PPF_Perturbations(this, dgrhoe, dgqe, &
         a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, &
-        etak, adotoa, k, kf1, ay, ayprime, w_ix)
+        etak, adotoa, k, kf1, ay, ayprime, w_ix, dgpi, deltapT)
     else
         if (this%no_perturbations) then
             dgrhoe=0
@@ -339,10 +337,10 @@
 
 
     subroutine TAxionEffectiveFluid_PerturbedStressEnergy(this, dgrhoe, dgqe, &
-        a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1, ay, ayprime, w_ix)
+        a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1, ay, ayprime, w_ix, dgpi, deltapT)
     class(TAxionEffectiveFluid), intent(inout) :: this
     real(dl), intent(out) :: dgrhoe, dgqe
-    real(dl), intent(in) :: a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1
+    real(dl), intent(in) :: a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1, dgpi, deltapT
     real(dl), intent(in) :: ay(*)
     real(dl), intent(inout) :: ayprime(*)
     integer, intent(in) :: w_ix
@@ -354,32 +352,28 @@
 
     ! JVR Modification: add PPF perturbations
     subroutine PPF_Perturbations(this, dgrhoe, dgqe, &
-        a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1, ay, ayprime, w_ix)
+        a, dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1, ay, ayprime, w_ix, dgpi, deltapT)
         class(TDarkEnergyFluid), intent(inout) :: this
         real(dl), intent(out) :: dgrhoe, dgqe
         real(dl), intent(in) :: grhov_t
         real(dl), intent(in) :: w
-        real(dl), intent(in) :: a, dgq, dgrho, grho, gpres_noDE, etak, adotoa, k, kf1
+        real(dl), intent(in) :: a, dgq, dgrho, grho, gpres_noDE, etak, adotoa, k, kf1, dgpi, deltapT
         real(dl), intent(in) :: ay(*)
         real(dl), intent(inout) :: ayprime(*)
         integer, intent(in) :: w_ix
-        real(dl) :: grhoT, vT, k2, sigma, S_Gamma, ckH, Gamma, Gammadot, Fa, c_Gamma_ppf, kH, Q, v_c, xi_0
-
-        ! Implementation based on lines 2919-2958 from https://github.com/liaocrane/IDECAMB/blob/master/camb/equations_ppfi.f90
+        real(dl) :: grhoT, vT, k2, sigma, S_Gamma, ckH, Gamma, Gammadot, Fa, c_Gamma_ppf, kH, Q, v_c, xi_0, S0
     
         k2 = k**2
         grhoT = grho - grhov_t
         vT = dgq / (grhoT + gpres_noDE)
         Gamma = ay(w_ix)
         c_Gamma_ppf = 0.4_dl
+        Q = this%xi_interaction * adotoa * grhov_t
         v_c = 0.d0
         
+        ! Note: since Q is divided by grho, there is no need to cancel the 8*pi*G*a^2 factors
         ! Note: for the remainder of the equations, there is no need to multiply a * Q
         ! since Q = \xi * H * \rho_de and a * Q = \xi * \mathcal{H} * \rho_de which is calculated here
-        ! Note: since Q is divided by grho, there is no need to cancel the 8*pi*G*a^2 factors
-        ! So Q here is actually kappa * a^2 * a * Q_{paper}
-        Q = this%xi_interaction * adotoa * grhov_t
-
     
         ! Original implementation of sigma
         ! sigma = (etak + (dgrho + 3 * adotoa / k * dgq) / 2._dl / k) / kf1 - k * Gamma
@@ -389,52 +383,35 @@
         ! We can see that if Q = 0, Eq. 5.17 is equivalent to the original code
         ! So just add another term for the Q
         ! TODO: check how to get total energy density and pressure to add in the denominator of Q
-        ckH = c_Gamma_ppf * k / adotoa
         kH = k / adotoa
-        sigma = (etak + (dgrho + 3 * adotoa / k * dgq * (1 + Q / (3 * adotoa * (grhoT + gpres_noDE)))) / 2._dl / k) / kf1 - k * Gamma
-
-        ! Copy from IDECAMB implementation
         sigma = (etak + (dgrho + 3*adotoa/k*dgq + Q*vT/k)/2._dl/k)/kf1 - k*Gamma
         sigma = sigma / adotoa
-
-        ! TODO: include dgpi in here from equations.f90
-        ! dgpi = grhor_t*pir + grhog_t*pig
-        !if (CP%Num_Nu_Massive > 0) then
-        !    call MassiveNuVarsOut(EV,ay,ayprime,a,dgpi)
-        !end if
+    
         ! Original implementation of S_Gamma:
         !S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2
 
-        ! TODO: implement xi_0
-        ! See equations 5.19 and 4.13
-        !deltapT=(grhog_t*clxg+grhor_t*clxr+4*(grhog_t+grhor_t)*vT*adotoa/k)/3._dl
-        ! xi0 = -(deltapT - 2*EV%kf(1)*dgpi/3._dl - gD2*(vc-vT)/k)/(grhoT+gpres)
-        xi_0 = 0.d0
+        ! TODO: insert deltapT and dgpi
+        ! deltapT=(grhog_t*clxg+grhor_t*clxr+4*(grhog_t+grhor_t)*vT*adotoa/k)/3._dl
+        ! dgpi = grhor_t*pir + grhog_t*pig
+        xi_0 = -(deltapT - 2*kf1*dgpi/3._dl - Q*(v_c-vT)/k)/(grhoT+gpres_noDE)
 
-        ! TODO: implement correct expression for S_0:
-        ! S0 = -3*gD2*(vc-vT)*adotoa/k - gC2*(clxc +(3*adotoa+gQ/grhoc_t)*vT/k) - !gQ*xi0
-        ! S0 = grhov_t*(1+w_eff)*(vT+sigma)*k + S0/EV%kf(1)  
-        ! S0 = S0/2._dl/k2
+        S0 = -3*Q*(v_c-vT)*adotoa/k - Q*xi_0
+        S0 = grhov_t*(1+w)*(vT+sigma)*k + S0/kf1  
+        S0 = S0/2._dl/k2
 
-        S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2 - (1._dl / 2._dl / k2) * (3 * Q) / k * (v_c - vT) - Q * xi_0 / adotoa
-        
-        if (ckH * ckH .gt. 3.d1) then ! ckH^2 > 30 ?????????
-            Gamma = 0
-            Gammadot = 0.d0
-        else
-            ! JVR Modification: adding a term to S_0 (Eq. 4.17)
-            ! Original implementation of Gammadot:
-            ! Gammadot = S_Gamma / (1 + ckH * ckH) - Gamma - ckH * ckH * Gamma
-            Gammadot = (S_Gamma + Q * Gamma / grhov_t * kappa * a * a) / (1 + ckH * ckH) - Gamma - ckH * ckH * Gamma
-            ! JVR Note: have to cancel the kappa * a^2 factor from grhov_t
-            Gammadot = Gammadot * adotoa
+        ckH = c_Gamma_ppf * k / adotoa
+        if (ckH*ckH.gt.3.d1) then
+            Gammadot=0.d0
+        else 
+            Gammadot=(S0+Q*Gamma/grhov_t)/(ckH*ckH+1)-(ckH*ckH+1)*adotoa*Gamma
         endif
-        ayprime(w_ix) = Gammadot ! Set this here, and don't use PerturbationEvolve
-    
+        ayprime(w_ix)=Gammadot
+		S_Gamma = S0+Q/grhov_t*Gamma
         Fa = 1 + 3 * (grhoT + gpres_noDE) / 2._dl / k2 / kf1
-        dgqe = S_Gamma - Gammadot / adotoa - Gamma
-        dgqe = -dgqe / Fa * 2._dl * k * adotoa + vT * grhov_t * (1 + w) ! No need to change this equation
-        dgrhoe = -2 * k2 * kf1 * Gamma - 3 / k * adotoa * dgqe + Q * vT / k ! Added a new term
+        dgqe=S_Gamma - Gammadot - Gamma*adotoa
+        dgqe=-dgqe/Fa*2._dl*k + vT*grhov_t*(1+w)
+        dgrhoe=-2*k2*kf1*Gamma-3/k*adotoa*dgqe + Q*vT/k
+        
     end subroutine PPF_Perturbations
 
     end module DarkEnergyFluid

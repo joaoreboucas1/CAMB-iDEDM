@@ -2175,7 +2175,7 @@
     real(dl) phidot, polterdot, polterddot, octg, octgdot
     real(dl) ddopacity, visibility, dvisibility, ddvisibility, exptau, lenswindow
     real(dl) ISW, quadrupole_source, doppler, monopole_source, tau0, ang_dist
-    real(dl) dgrho_de, dgq_de, cs2_de
+    real(dl) dgrho_de, dgq_de, cs2_de, vT, deltapT, grhoT
     ! JVR Modification Begins
     real(dl) w_eff, xi_interaction
     ! JVR Modification Ends
@@ -2287,10 +2287,15 @@
     photbar=grhog_t/grhob_t
     pb43=4._dl/3*photbar
 
+    ! JVR modification: auxiliary quantities for PPF calculation
+    grhoT = grho - grhov_t
+    vT = dgq / (grhoT + gpres_noDE)
+    dgpi  = grhor_t*pir + grhog_t*pig
+    deltapT=(grhog_t*clxg+grhor_t*clxr+4*(grhog_t+grhor_t)*vT*adotoa/k)/3._dl
     if (.not. EV%is_cosmological_constant) then
         call State%CP%DarkEnergy%PerturbedStressEnergy(dgrho_de, dgq_de, &
             a, dgq, dgrho, grho, grhov_t, w_dark_energy_t, gpres_noDE, etak, &
-            adotoa, k, EV%Kf(1), ay, ayprime, EV%w_ix)
+            adotoa, k, EV%Kf(1), ay, ayprime, EV%w_ix, dgpi, deltapT)
         dgrho = dgrho + dgrho_de
         dgq = dgq + dgq_de
     end if
