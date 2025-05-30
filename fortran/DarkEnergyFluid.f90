@@ -364,7 +364,7 @@
         real(dl), intent(in) :: ay(*)
         real(dl), intent(inout) :: ayprime(*)
         integer, intent(in) :: w_ix
-        real(dl) :: grhoT, vT, k2, sigma, S_Gamma, ckH, Gamma, Gammadot, Fa, c_Gamma_ppf, kH, Q, v_c, xi_0, S0
+        real(dl) :: grhoT, vT, k2, sigma, S_Gamma, ckH, Gamma, Gammadot, Fa, c_Gamma_ppf, kH, Q, v_c, xi_0, S0, ckH2, w_eff
     
         k2 = k**2
         grhoT = grho - grhov_t
@@ -373,7 +373,8 @@
         c_Gamma_ppf = 0.4_dl
         Q = this%xi_interaction * adotoa * grhov_t
         v_c = 0.d0
-        
+        w_eff = w + this%xi_interaction/3
+
         ! Note: since Q is divided by grho, there is no need to cancel the 8*pi*G*a^2 factors
         ! Note: for the remainder of the equations, there is no need to multiply a * Q
         ! since Q = \xi * H * \rho_de and a * Q = \xi * \mathcal{H} * \rho_de which is calculated here
@@ -390,26 +391,27 @@
         ! Original implementation of S_Gamma:
         !S_Gamma = grhov_t * (1 + w) * (vT + sigma) * k / adotoa / 2._dl / k2
 
-        ! TODO: insert deltapT and dgpi
         ! deltapT=(grhog_t*clxg+grhor_t*clxr+4*(grhog_t+grhor_t)*vT*adotoa/k)/3._dl
         ! dgpi = grhor_t*pir + grhog_t*pig
         xi_0 = -(deltapT - 2*kf1*dgpi/3._dl - Q*(v_c-vT)/k)/(grhoT+gpres_noDE)
 
         S0 = -3*Q*(v_c-vT)*adotoa/k - Q*xi_0
-        S0 = grhov_t*(1+w)*(vT+sigma)*k + S0/kf1  
+        S0 = grhov_t*(1+w_eff)*(vT+sigma)*k + S0/kf1  
         S0 = S0/2._dl/k2
 
         ckH = c_Gamma_ppf * k / adotoa
-        if (ckH*ckH.gt.3.d1) then
+        ckH2 = ckH*ckH
+		S_Gamma = S0+Q/grhov_t*Gamma
+        if (ckH*ckH .gt. 3.d1) then
+            Gamma = 0.d0
             Gammadot=0.d0
         else 
-            Gammadot=(S0+Q*Gamma/grhov_t)/(ckH*ckH+1)-(ckH*ckH+1)*adotoa*Gamma
+            Gammadot=S_Gamma/(ckH2+1)-(ckH2+1)*adotoa*Gamma
         endif
         ayprime(w_ix)=Gammadot
-		S_Gamma = S0+Q/grhov_t*Gamma
         Fa = 1 + 3 * (grhoT + gpres_noDE) / 2._dl / k2 / kf1
         dgqe=S_Gamma - Gammadot - Gamma*adotoa
-        dgqe=-dgqe/Fa*2._dl*k + vT*grhov_t*(1+w)
+        dgqe=-dgqe/Fa*2._dl*k + vT*grhov_t*(1+w_eff)
         dgrhoe=-2*k2*kf1*Gamma-3/k*adotoa*dgqe + Q*vT/k
         
     end subroutine PPF_Perturbations
